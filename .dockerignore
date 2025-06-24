@@ -1,0 +1,55 @@
+# Node modules
+**/node_modules
+
+# Git related files
+.git
+.gitignore
+
+# Development and IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Build directories
+**/dist
+**/build
+**/out
+
+# Logs
+**/*.log
+**/logs
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Cache directories
+**/.cache
+**/.npm
+
+# Test coverage
+**/coverage
+
+# Debug files
+**/.debug
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# Docker files (to avoid recursive copying)
+Dockerfile
+.dockerignore
+
+# Backend specific
+backend/search-results.png
+
+# Puppeteer cache
+.cache/puppeteer
