@@ -5,7 +5,6 @@ import { SearchForm } from "@/components/SearchForm"
 import { ProductList } from "@/components/ProductList"
 import { LoadingIndicator } from "@/components/loading-indicator"
 import { Package2, AlertCircle, MapPin } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Toaster, toast } from "react-hot-toast"
 
 const getWebsocketUrl = () => {
@@ -93,7 +92,6 @@ export default function Home() {
         ws.current = new WebSocket(WS_URL)
 
         ws.current.onopen = () => {
-          console.log("WebSocket Connected")
           setIsConnected(true)
           setError("")
           toast.success("Connected to server!", {
@@ -116,7 +114,6 @@ export default function Home() {
         }
 
         ws.current.onclose = (event) => {
-          console.log("WebSocket Disconnected", event)
           setIsConnected(false)
 
           if (!event.wasClean) {
@@ -129,7 +126,6 @@ export default function Home() {
             })
             setTimeout(() => {
               if (ws.current?.readyState === WebSocket.CLOSED) {
-                console.log("Attempting to reconnect...")
                 initializeWebSocket()
               }
             }, 3000)
@@ -184,7 +180,6 @@ export default function Home() {
                 if (data.status === "completed") {
                   if (data.success) {
                     setIsLocationSet(true)
-                    // Show location status for services
                     if (data.locationResults) {
                       const locationMessages = data.locationResults
                         .map((r: any) => `${r.service}: ${r.success ? '✅' : '❌'}`)
@@ -220,7 +215,6 @@ export default function Home() {
               } else if (data.step === "search") {
                 setIsLoadingSearch(data.status === "loading")
                 if (data.status === "completed") {
-                  // Search completed
                   setIsLoadingSearch(false)
                   setLoadingMessage("")
                 } else if (data.status === "error") {
@@ -232,7 +226,6 @@ export default function Home() {
               }
               return
             }
-              // Handle service-specific search updates
             if (data.action === "serviceSearchUpdate") {
               const { service, status, message } = data
               
@@ -247,7 +240,6 @@ export default function Home() {
                   }
                 }))
                 
-                // Show subtle toasts for service status updates
                 if (status === "error") {
                   toast.error(`${service}: ${message}`, { 
                     duration: 2000,
@@ -270,12 +262,10 @@ export default function Home() {
 
             switch (data.action) {
               case "searchResults":
-                // Reset search loading states
                 setIsLoadingSearch(false)
                 setLoadingMessage("")
                 
                 if (data.products) {
-                  // Update products for all services
                   setServices(prev => ({
                     blinkit: {
                       ...prev.blinkit,
@@ -394,7 +384,6 @@ export default function Home() {
     }
 
     try {
-      // Reset all services to loading state
       setServices(prev => ({
         blinkit: { ...prev.blinkit, status: "loading", isLoading: true, message: "Searching..." },
         zepto: { ...prev.zepto, status: "loading", isLoading: true, message: "Searching..." },
@@ -457,7 +446,6 @@ export default function Home() {
           <LoadingIndicator message={loadingMessage} />
         )}
 
-        {/* Service tabs */}
         <div className="mb-6 border-b border-gray-200">
           <ul className="flex flex-wrap -mb-px text-sm font-medium text-center">
             <li className="mr-2">
@@ -484,7 +472,6 @@ export default function Home() {
           </ul>
         </div>
 
-        {/* Conditional rendering based on active service */}
         {activeService === null ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {Object.entries(services).map(([service, data]) => (
@@ -506,7 +493,6 @@ export default function Home() {
                 </div>
                 <ProductList 
                   products={data.products} 
-                  onAddToCart={(productId) => handleAddToCart(productId, service as Service)}
                   isCompact={true}
                   serviceName={service as Service}
                   isLoading={data.isLoading}
@@ -518,17 +504,12 @@ export default function Home() {
           <div>
             <ProductList 
               products={services[activeService].products} 
-              onAddToCart={(productId) => handleAddToCart(productId, activeService)}
               serviceName={activeService}
               isLoading={services[activeService].isLoading}
             />
           </div>
         )}
       </main>
-
-      <footer className="bg-slate-800 text-white text-center p-4 mt-auto">
-        <p>&copy; {new Date().getFullYear()} QuickCom Scraper Tool. For educational purposes only.</p>
-      </footer>
     </div>
   )
 }

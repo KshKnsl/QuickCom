@@ -1,31 +1,38 @@
 async function setZeptoLocation(page, location) {
   console.log(`Setting Zepto location to: ${location}`);
   try {
+    // Go to the Zepto website
     if (!page.url().includes("zeptonow.com")) {
       await page.goto("https://www.zeptonow.com/");
     }
 
     // Handle initial location setup or change location
     try {
-      // Check if location button exists
-      const locationBtnSelector = '[data-testid="location-btn"], .location-btn, [class*="location-button"]';
-      const hasLocationBtn = await page.$(locationBtnSelector);
+      // Click on "Select Location" button
+      await page.waitForSelector('.max-w-\\[170px\\] > span', { timeout: 5000 });
+      await page.click('.max-w-\\[170px\\] > span');
+      console.log("Clicked location button");
       
-      if (hasLocationBtn) {
-        await page.click(locationBtnSelector);
-        console.log("Clicked location button");
-      }
+      // Wait for the search address input field and click on it
+      await page.waitForSelector('[placeholder="Search a new address"]', { timeout: 5000 });
+      await page.click('[placeholder="Search a new address"]');
       
-      // Enter location in search input
-      await page.waitForSelector('input[type="text"][placeholder*="location"], input[type="text"][placeholder*="address"]', { timeout: 5000 });
-      await page.type('input[type="text"][placeholder*="location"], input[type="text"][placeholder*="address"]', location);
+      // Type the location in search input
+      await page.waitForSelector('[placeholder="Search a new address"]:not([disabled])', { timeout: 5000 });
+      await page.type('[placeholder="Search a new address"]', location);
+      console.log(`Typed location: ${location}`);
       
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Wait for the location suggestion to appear and click on it
+      await page.waitForSelector('.flex:nth-child(1) > .ml-4 > div > .font-heading', { timeout: 5000 });
+      await page.click('.flex:nth-child(1) > .ml-4 > div > .font-heading');
+      console.log("Selected location from suggestions");
       
-      // Wait for and click the first suggestion
-      await page.waitForSelector('[class*="suggestion-item"]:first-child, [class*="location-item"]:first-child', { timeout: 5000 });
-      await page.click('[class*="suggestion-item"]:first-child, [class*="location-item"]:first-child');
+      // Wait for confirm button and click "Confirm & Continue" 
+      await page.waitForSelector('.bg-skin-primary > .flex', { timeout: 5000 });
+      await page.click('.bg-skin-primary > .flex');
+      console.log("Clicked confirm and continue");
       
+      // Wait for page to update with the new location
       await new Promise((resolve) => setTimeout(resolve, 2000));
     } catch (error) {
       console.error(`Error during Zepto location selection: ${error.message}`);
@@ -50,18 +57,21 @@ async function setZeptoLocation(page, location) {
 async function isLocationSet(page) {
   console.log("Checking if Zepto location is set...");
   
-  // Various possible selectors where Zepto might display the current location
-  const locationSelectors = [
-    '[data-testid="location-btn"]',
-    '[class*="location-display"]',
-    '[class*="address-display"]',
-    '[class*="location-bar"]',
-    'button:has([class*="location-icon"])',
-    '[class*="header"] [class*="location"]'
-  ];
-
   try {
-    // Try each selector
+    // Check for the location display in the header
+    // Based on the current Zepto website structure
+    const locationSelectors = [
+      // Current main selector for the location display
+      '.max-w-\\[170px\\] > span',
+      // Alternative selectors if the UI changes
+      '[data-testid="location-btn"]',
+      '[class*="location-display"]',
+      '[class*="address-display"]',
+      '.selected-location',
+      '.delivery-location'
+    ];
+
+    // Try each selector to find the location display element
     for (const selector of locationSelectors) {
       try {
         const exists = await page.$(selector);
@@ -80,87 +90,22 @@ async function isLocationSet(page) {
     // Check if we're on the main page (success indicator)
     const isOnMainPage = await page.evaluate(() => {
       return window.location.pathname === '/' || 
-             document.querySelector('[class*="product-list"], [class*="category-list"]') !== null;
+             document.querySelector('.product-grid, [class*="product-list"], [class*="category-list"]') !== null;
     });
     
     if (isOnMainPage) {
       console.log("On Zepto main page, assuming location is set");
       return "Location Set";
     }
-  } catch (error) {
-    console.log(
-      "Location ETA container not found within 5 seconds or error during check."
-    );
-    return "400";
-  }
-}
-
-async function setZeptoLocation(page, location) {
-  console.log(`Setting Zepto location to: ${location}`);
-  try {
-    if (!page.url().includes("zeptonow.com")) {
-      await page.goto("https://www.zeptonow.com/");
-    }
-
-    // Check if we need to set location or if we're already on the main page
-    const hasLocationInput = await page.evaluate(() => {
-      return !!document.querySelector('.location-input') || 
-             !!document.querySelector('[placeholder*="location"]') ||
-             !!document.querySelector('[placeholder*="address"]');
-    });
-
-    if (hasLocationInput) {
-      // Find and click the location input field
-      await page.waitForSelector('.location-input, [placeholder*="location"], [placeholder*="address"]', { timeout: 5000 });
-      await page.click('.location-input, [placeholder*="location"], [placeholder*="address"]');
-      
-      // Type the location
-      await page.waitForSelector('input[type="text"]', { timeout: 5000 });
-      await page.type('input[type="text"]', location);
-      
-      // Wait for location suggestions to appear and click the first one
-      await page.waitForSelector('.location-suggestions .suggestion-item, .address-suggestions li', { timeout: 5000 });
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for all suggestions to load
-      await page.click('.location-suggestions .suggestion-item:first-child, .address-suggestions li:first-child');
-      
-      // Wait for the page to update with the new location
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-
-    // Verify that location is set
-    const locationTitle = await isLocationSet(page);
-    if (locationTitle) {
-      console.log(`Zepto location successfully set to: ${locationTitle}`);
-      return locationTitle;
-    } else {
-      console.log('Failed to verify Zepto location');
-      return null;
-    }
-  } catch (error) {
-    console.error("Error setting Zepto location:", error);
-    return null;
-  }
-}
-
-async function isLocationSet(page) {
-  try {
-    // Try different selectors to find the location display element
-    const locationText = await page.evaluate(() => {
-      const locationEl = 
-        document.querySelector('.location-display') ||
-        document.querySelector('.delivery-location') ||
-        document.querySelector('.selected-location') ||
-        document.querySelector('[data-testid="selected-location"]');
-      
-      return locationEl ? locationEl.innerText.trim() : null;
-    });
     
-    return locationText;
+    return null;
   } catch (error) {
     console.error("Error checking if Zepto location is set:", error);
     return null;
   }
 }
+
+
 
 module.exports = {
   setZeptoLocation,

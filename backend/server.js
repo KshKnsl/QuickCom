@@ -17,9 +17,6 @@ const {
   setBlinkitLocation,
   isLocationSet: isBlinkitLocationSet,
 } = require("./blinkit/set-location.js");
-const {
-  handleAddToCart: handleBlinkitAddToCart,
-} = require("./blinkit/add-to-cart.js");
 
 // Zepto imports
 const {
@@ -31,9 +28,6 @@ const {
   setZeptoLocation,
   isLocationSet: isZeptoLocationSet,
 } = require("./zepto/set-location.js");
-const {
-  handleAddToCart: handleZeptoAddToCart,
-} = require("./zepto/add-to-cart.js");
 
 // Instamart imports
 const {
@@ -45,9 +39,6 @@ const {
   setInstamartLocation,
   isLocationSet: isInstamartLocationSet,
 } = require("./instamart/set-location.js");
-const {
-  handleAddToCart: handleInstamartAddToCart,
-} = require("./instamart/add-to-cart.js");
 
 const app = express();
 const server = http.createServer(app);
@@ -722,66 +713,7 @@ wss.on("connection", (ws) => {
                   success: false,
                   message: `Search error: ${error.message}`,
                 })
-              );
-            });
-          break;
-
-        case "addToCart":
-          const cartPages = activePages.get(clientId);
-          if (!cartPages) {
-            ws.send(
-              JSON.stringify({
-                status: "error",
-                action: "addToCart",
-                message: "Browsers not initialized. Please initialize first.",
-              })
-            );
-            break;
-          }
-
-          const { productId, service } = data;
-          if (
-            !service ||
-            !["blinkit", "zepto", "instamart"].includes(service)
-          ) {
-            ws.send(
-              JSON.stringify({
-                status: "error",
-                action: "addToCart",
-                message:
-                  "Invalid or missing service specified for add to cart.",
-              })
-            );
-            break;
-          }
-
-          if (!cartPages[service]) {
-            ws.send(
-              JSON.stringify({
-                status: "error",
-                action: "addToCart",
-                message: `${service} browser not initialized.`,
-              })
-            );
-            break;
-          }
-
-          // Call the appropriate add to cart handler based on service
-          switch (service) {
-            case "blinkit":
-              await handleBlinkitAddToCart(cartPages.blinkit, productId, ws);
-              break;
-            case "zepto":
-              await handleZeptoAddToCart(cartPages.zepto, productId, ws);
-              break;
-            case "instamart":
-              await handleInstamartAddToCart(
-                cartPages.instamart,
-                productId,
-                ws
-              );
-              break;
-          }
+              );            });
           break;
 
         case "close":

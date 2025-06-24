@@ -2,37 +2,38 @@ async function navigateToSearch(page, searchTerm) {
   console.log(`Directly navigating to search URL with term: ${searchTerm}`);
   
   try {
-    const encodedSearchTerm = encodeURIComponent(searchTerm);
-    console.log(`Going to: https://blinkit.com/s/?q=${encodedSearchTerm}`);
-    const response = await page.goto(`https://blinkit.com/s/?q=${encodedSearchTerm}`, {
+    const encSearchTerm = encodeURIComponent(searchTerm);
+    console.log(`Going to: https://blinkit.com/s/?q=${encSearchTerm}`);
+    const resp = await page.goto(`https://blinkit.com/s/?q=${encSearchTerm}`, {
       waitUntil: 'networkidle2', 
       timeout: 50000
     });
     
     const url = await page.url();
     console.log(`Current page URL: ${url}`);
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(r => setTimeout(r, 2000));
     return true;
-  } catch (error) {
-    console.log(`Error navigating to search URL: ${error.message}`);
+  } catch (err) {
+    console.log(`Error navigating to search URL: ${err.message}`);
     return false;
   }
 }
+
 async function ensureContentLoaded(page) {
   try {
     try {
-      const loadingSelector = '.LoadingIcon, .spinner, [class*="loading"], [class*="Loading"]';
-      const hasLoadingIndicator = await page.$(loadingSelector);
+      const loadSel = '.LoadingIcon, .spinner, [class*="loading"], [class*="Loading"]';
+      const hasLoader = await page.$(loadSel);
       
-      if (hasLoadingIndicator) {
-        await page.waitForSelector(loadingSelector, { hidden: true, timeout: 10000 });
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      if (hasLoader) {
+        await page.waitForSelector(loadSel, { hidden: true, timeout: 10000 });
+        await new Promise(r => setTimeout(r, 1000));
       }
-    } catch (loadingError) {
+    } catch (loadErr) {
       console.log("No loading indicator found or timeout waiting for it to disappear");
     }
     
-    const contentSelectors = [
+    const contentSels = [
       'div[role="button"][id]', 
       'div[id][data-pf="reset"]',
       '.ProductCard__Wrapper',
@@ -41,144 +42,141 @@ async function ensureContentLoaded(page) {
       'div[class*="product"]'
     ];
     
-    let contentFound = false;
+    let found = false;
     
-    for (const selector of contentSelectors) {
+    for (const sel of contentSels) {
       try {
-        await page.waitForSelector(selector, { timeout: 3000 });
-        console.log(`Found content with selector: ${selector}`);
-        contentFound = true;
+        await page.waitForSelector(sel, { timeout: 3000 });
+        console.log(`Found content with selector: ${sel}`);
+        found = true;
         break;
-      } catch (error) {
-        console.log(`Selector ${selector} not found: ${error.message}`);
+      } catch (err) {
+        console.log(`Selector ${sel} not found: ${err.message}`);
       }
     }
     
-    if (!contentFound) {
+    if (!found) {
       try {
-        const noResultsSelector = '.EmptySearchResults, [class*="empty"], [class*="no-results"]';
-        const hasNoResults = await page.$(noResultsSelector);
+        const noResSel = '.EmptySearchResults, [class*="empty"], [class*="no-results"]';
+        const noRes = await page.$(noResSel);
         
-        if (hasNoResults) {
+        if (noRes) {
           console.log("Found 'no results' indicator");
           return true;
         }
-      } catch (noResultsError) {
+      } catch (noResErr) {
         console.log("No 'no results' indicator found");
       }
       
       console.log("No standard content selectors found, waiting extra time...");
-      await new Promise(resolve => setTimeout(resolve, 5000)); 
+      await new Promise(r => setTimeout(r, 5000)); 
       const hasContent = await page.evaluate(() => {
-        const hasImages = document.querySelectorAll('img').length > 3;
+        const hasImgs = document.querySelectorAll('img').length > 3;
         const hasPrices = Array.from(document.querySelectorAll('*')).some(el => 
           el.textContent && el.textContent.includes('₹'));
         
-        return hasImages || hasPrices;
+        return hasImgs || hasPrices;
       });
       
       if (hasContent) {
         console.log("Found generic content indicators");
-        contentFound = true;
+        found = true;
       }
     }
-    return contentFound;
-  } catch (error) {
-    console.log(`Error ensuring content loaded: ${error.message}`);
+    return found;
+  } catch (err) {
+    console.log(`Error ensuring content loaded: ${err.message}`);
     return true;
   }
 }
 
-// Updated function to process JSON response
-function extractProductInformation(productJsonResponse) {
+function extractProductInformation(prodJson) {
   console.log("Extracting product information from JSON response...");
-  const products = [];
+  const prods = [];
 
-  if (!productJsonResponse || !productJsonResponse.response || !Array.isArray(productJsonResponse.response.snippets)) {
-    console.error("Error: Invalid JSON structure. Expected 'response.snippets' array.", productJsonResponse);
-    return products;
+  if (!prodJson || !prodJson.response || !Array.isArray(prodJson.response.snippets)) {
+    console.error("Error: Invalid JSON structure. Expected 'response.snippets' array.", prodJson);
+    return prods;
   }
 
-  const snippets = productJsonResponse.response.snippets;
+  const snippets = prodJson.response.snippets;
 
-  snippets.forEach((snippet, index) => {
-    // Skip non-product snippets (e.g., headers like "image_text_vr_type_header" or where essential data is missing)
-    // A more robust check might be needed depending on other possible widget_types
-    if (!snippet.data || snippet.widget_type === "image_text_vr_type_header" || !snippet.data.name || !snippet.data.identity || snippet.data.identity.id === "product_container") {
-      console.log(`Skipping snippet at index ${index} as it does not appear to be a product.`);
-      return; // Skips this iteration
+  snippets.forEach((snip, idx) => {
+    if (!snip.data || 
+        snip.widget_type === "image_text_vr_type_header" || 
+        !snip.data.name || 
+        !snip.data.identity || 
+        snip.data.identity.id === "product_container") {
+      console.log(`Skipping snippet at index ${idx} as it does not appear to be a product.`);
+      return;
     }
 
-    const rawProductData = snippet.data;
+    const raw = snip.data;
 
     try {
-      const id = rawProductData.identity.id || `product_${index}`;
-      const name = rawProductData.name && rawProductData.name.text ? rawProductData.name.text : 'Product Name Not Available';
+      const id = raw.identity.id || `product_${idx}`;
+      const name = raw.name && raw.name.text ? raw.name.text : 'Product Name Not Available';
 
       let price = 'Price Not Available';
-      if (rawProductData.normal_price && rawProductData.normal_price.text) {
-        price = rawProductData.normal_price.text; // e.g., "₹18"
-      } else if (rawProductData.price && typeof rawProductData.price === 'number') { // Fallback for numeric price
-        price = `₹${rawProductData.price.toFixed(2)}`;
+      if (raw.normal_price && raw.normal_price.text) {
+        price = raw.normal_price.text;
+      } else if (raw.price && typeof raw.price === 'number') {
+        price = `₹${raw.price.toFixed(2)}`;
       }
 
-
-      let originalPrice = null;
-      if (rawProductData.mrp && rawProductData.mrp.text) {
-        originalPrice = rawProductData.mrp.text; // e.g., "₹20"
+      let origPrice = null;
+      if (raw.mrp && raw.mrp.text) {
+        origPrice = raw.mrp.text;
       }
 
-      const quantity = rawProductData.variant && rawProductData.variant.text ? rawProductData.variant.text : 'N/A'; // e.g., "67 g"
-      const imageUrl = rawProductData.image && rawProductData.image.url ? rawProductData.image.url : '';
-
-      // Delivery time might need more specific logic if "earliest" is not sufficient
-      const deliveryTime = rawProductData.eta_tag && rawProductData.eta_tag.title && rawProductData.eta_tag.title.text ? rawProductData.eta_tag.title.text : 'N/A';
+      const qty = raw.variant && raw.variant.text ? raw.variant.text : 'N/A';
+      const imgUrl = raw.image && raw.image.url ? raw.image.url : '';
+      const delTime = raw.eta_tag && raw.eta_tag.title && raw.eta_tag.title.text ? 
+                      raw.eta_tag.title.text : 'N/A';
       
-      let discount = null;
-      if (rawProductData.offer_tag && rawProductData.offer_tag.title && rawProductData.offer_tag.title.text) {
-        discount = rawProductData.offer_tag.title.text.replace(/\n/g, ' '); // e.g., "10% OFF"
+      let disc = null;
+      if (raw.offer_tag && raw.offer_tag.title && raw.offer_tag.title.text) {
+        disc = raw.offer_tag.title.text.replace(/\n/g, ' ');
       }
 
-      // Availability based on is_sold_out or inventory
-      const available = rawProductData.hasOwnProperty('is_sold_out') ? !rawProductData.is_sold_out :
-                        (rawProductData.hasOwnProperty('inventory') ? rawProductData.inventory > 0 : true);
-
+      const avail = raw.hasOwnProperty('is_sold_out') ? !raw.is_sold_out :
+                   (raw.hasOwnProperty('inventory') ? raw.inventory > 0 : true);
 
       let savings = null;
-      if (originalPrice && price) {
-        const priceMatch = price.match(/₹\s*(\d+(?:\.\d+)?)/);
-        const originalPriceMatch = originalPrice.match(/₹\s*(\d+(?:\.\d+)?)/);
+      if (origPrice && price) {
+        const prMatch = price.match(/₹\s*(\d+(?:\.\d+)?)/);
+        const opMatch = origPrice.match(/₹\s*(\d+(?:\.\d+)?)/);
         
-        if (priceMatch && originalPriceMatch) {
-          const currentPriceNum = parseFloat(priceMatch[1]);
-          const originalPriceNum = parseFloat(originalPriceMatch[1]);
+        if (prMatch && opMatch) {
+          const curPrice = parseFloat(prMatch[1]);
+          const orgPrice = parseFloat(opMatch[1]);
           
-          if (!isNaN(originalPriceNum) && !isNaN(currentPriceNum) && originalPriceNum > currentPriceNum) {
-            savings = `₹${(originalPriceNum - currentPriceNum).toFixed(0)}`;
+          if (!isNaN(orgPrice) && !isNaN(curPrice) && orgPrice > curPrice) {
+            savings = `₹${(orgPrice - curPrice).toFixed(0)}`;
           }
         }
       }
 
-      products.push({
+      prods.push({
         id,
         name,
         price,
-        originalPrice,
+        originalPrice: origPrice,
         savings,
-        quantity,
-        deliveryTime,
-        discount,
-        imageUrl,
-        available
+        quantity: qty,
+        deliveryTime: delTime,
+        discount: disc,
+        imageUrl: imgUrl,
+        available: avail
       });
 
-    } catch (error) {
-      console.error(`Error processing product data for snippet at index ${index}: ${error.message}`, rawProductData);
+    } catch (err) {
+      console.error(`Error processing product data for snippet at index ${idx}: ${err.message}`, raw);
     }
   });
 
-  console.log(`Successfully processed ${products.length} products from JSON response.`);
-  return products;
+  console.log(`Successfully processed ${prods.length} products from JSON response.`);
+  return prods;
 }
 
 module.exports = {

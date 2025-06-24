@@ -1,5 +1,5 @@
-async function setBlinkitLocation(page, location) {
-  console.log(`Setting Blinkit location to: ${location}`);
+async function setBlinkitLocation(page, loc) {
+  console.log(`Setting Blinkit location to: ${loc}`);
   try {
     if (!page.url().includes("blinkit.com")) {
       await page.goto("https://blinkit.com/");
@@ -8,50 +8,50 @@ async function setBlinkitLocation(page, location) {
     await page.waitForSelector('[name="select-locality"]');
     await page.click('[name="select-locality"]');
     await page.waitForSelector('[name="select-locality"]:not([disabled])');
-    await page.type('[name="select-locality"]', location);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await page.type('[name="select-locality"]', loc);
+    await new Promise((r) => setTimeout(r, 2000));
     await page.waitForSelector(
       ".LocationSearchList__LocationListContainer-sc-93rfr7-0:nth-child(1)"
     );
     await page.click(
       ".LocationSearchList__LocationListContainer-sc-93rfr7-0:nth-child(1)"
     );
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    locationTitle = await isLocationSet(page);
-    if (locationTitle && locationTitle !== "400") {
-      console.log(`Location successfully set to: ${locationTitle}`);
-      return locationTitle; 
+    await new Promise((r) => setTimeout(r, 2000));
+    let locTitle = await isLocationSet(page);
+    if (locTitle && locTitle !== "400") {
+      console.log(`Location successfully set to: ${locTitle}`);
+      return locTitle; 
     } else {
-      console.log(`Failed to verify location after setting to: ${location}`);
+      console.log(`Failed to verify location after setting to: ${loc}`);
       return null; 
     }
-  } catch (error) {
-    console.error("Error setting Blinkit location:", error);
+  } catch (err) {
+    console.error("Error setting Blinkit location:", err);
     return null;
   }
 }
 
 async function isLocationSet(page) {
   console.log("Checking if location is set by looking for ETA container...");
-  const etaContainerSelector = '[class^="LocationBar__EtaContainer-"]';
-  const titleSelector = '[class^="LocationBar__Subtitle-"]';
+  const etaSel = '[class^="LocationBar__EtaContainer-"]';
+  const titleSel = '[class^="LocationBar__Subtitle-"]';
 
   try {
-    await page.waitForSelector(etaContainerSelector, {
+    await page.waitForSelector(etaSel, {
       timeout: 5000,
       visible: true,
     });
-    const titleText = await page.$eval(
-      `${etaContainerSelector} ${titleSelector}`,
+    const txt = await page.$eval(
+      `${etaSel} ${titleSel}`,
       (el) => el.textContent.trim()
     );
-    if (titleText) {
-      console.log(`Location title found: "${titleText}"`);
-      return titleText;
+    if (txt) {
+      console.log(`Location title found: "${txt}"`);
+      return txt;
     } else {
       return "400";
     }
-  } catch (error) {
+  } catch (err) {
     console.log(
       "Location ETA container not found within 5 seconds or error during check."
     );

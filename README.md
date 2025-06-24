@@ -1,13 +1,12 @@
 # 🛒 QuickCom Scraper
 
-A full-stack application for scraping product data from Blinkit, Zepto, and Swiggy Instamart platforms. This application allows users to search for products, see results in real-time, add items to cart, and view their cart.
+A full-stack application for scraping product data from Blinkit, Zepto, and Swiggy Instamart platforms. This application allows users to search for products and see results in real-time across multiple quick commerce platforms.
 
 ## ✨ Features
 
 - Search products by location and search term
 - Real-time scraping from multiple quick commerce websites
-- Add products to cart
-- View and manage shopping cart
+- Compare prices and availability across platforms
 - WebSocket communication for real-time updates
 
 ## 🏗️ Project Structure
@@ -22,7 +21,7 @@ login/
 │   └── package.json           # Backend dependencies
 ├── frontend/                  # React + TypeScript + Tailwind CSS frontend
 │   ├── src/
-│   │   ├── components/        # UI components for product listing and cart
+│   │   ├── components/        # UI components for product listing
 │   │   │   └── ui/            # Reusable UI components
 │   │   ├── assets/            # Image assets for platforms
 │   │   ├── App.tsx            # Main application component
