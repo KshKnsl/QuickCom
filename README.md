@@ -1,66 +1,86 @@
-# 🛒 QuickCom Scraper
+# QuickCom Scraper
 
-A full-stack application for scraping product data from Blinkit, Zepto, and Swiggy Instamart platforms. This application allows users to search for products and see results in real-time across multiple quick commerce platforms.
+QuickCom is a web application that helps you find and compare product prices across Blinkit, Zepto, and Swiggy Instamart. Instead of checking each app individually, you can search once and see all the options, saving you time and money when ordering groceries or essentials.
 
-## ✨ Features
+## Demo
 
-- Search products by location and search term
-- Real-time scraping from multiple quick commerce websites
-- Compare prices and availability across platforms
-- WebSocket communication for real-time updates
+### Location Setting & Search Interface
+![Location and Search Interface](./screenshots/quickcom-search-interface.png)
 
-## 🏗️ Project Structure
+### Product Results Across Platforms
+![Product Results](./screenshots/quickcom-results.png)
+
+## Features
+
+- **Multi-platform Search**: Find products across multiple platforms with one search
+- **Location-based Results**: Set your location once to get accurate delivery options
+- **Real-time Comparison**: See prices and delivery times side by side
+- **Visual Indicators**: Easily spot discounts and best deals
+- **Responsive Design**: Works well on both desktop and mobile
+- **Live Updates**: Results appear as they're found thanks to WebSocket integration
+- **Complete Product Info**: See quantity, price, discounts, and delivery times
+
+## Project Structure
 
 ```
-login/
-├── backend/                   # Express.js backend with WebSocket and Puppeteer
-│   ├── blinkit/               # Blinkit specific scraping logic
-│   ├── zepto/                 # Zepto specific scraping logic
-│   ├── instamart/             # Swiggy Instamart specific scraping logic
-│   ├── server.js              # Main server application file
-│   └── package.json           # Backend dependencies
-├── frontend/                  # React + TypeScript + Tailwind CSS frontend
+QuickCom/
+├── backend/                   # Node.js backend server
+│   ├── blinkit/               # Blinkit-specific code
+│   │   ├── searchHelpers.js   # Search and data extraction
+│   │   └── set-location.js    # Location handling
+│   ├── zepto/                 # Zepto-specific code
+│   │   ├── searchHelpers.js   # Search and data extraction
+│   │   └── set-location.js    # Location handling
+│   ├── instamart/             # Swiggy Instamart-specific code
+│   │   ├── searchHelpers.js   # Search and data extraction
+│   │   └── set-location.js    # Location handling
+│   ├── server.js              # Main server file
+│   └── package.json           # Dependencies
+├── frontend/                  # React frontend
 │   ├── src/
-│   │   ├── components/        # UI components for product listing
-│   │   │   └── ui/            # Reusable UI components
-│   │   ├── assets/            # Image assets for platforms
-│   │   ├── App.tsx            # Main application component
+│   │   ├── components/        # UI components
+│   │   │   ├── SearchForm.tsx # Search interface
+│   │   │   ├── ProductList.tsx # Product display
+│   │   │   └── ui/            # UI elements
+│   │   ├── assets/            # Images and icons
+│   │   ├── App.tsx            # Main app component
 │   │   └── main.tsx           # Entry point
-│   └── package.json           # Frontend dependencies
-├── .env.example               # Example environment variables
+│   └── package.json           # Dependencies
+└── README.md                  # This documentation
 ```
 
-## 🔧 Technical Stack
+## Technology Stack
 
 ### Backend
 - **Node.js** - JavaScript runtime
-- **Express** - Web server framework
+- **Express** - Web framework
 - **WebSocket** - Real-time communication
-- **Puppeteer** - Browser automation
-- **dotenv** - Environment variable management
+- **Puppeteer** - Web automation and scraping
+- **dotenv** - Environment configuration
 
 ### Frontend
-- **React** - UI library
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Utility-first CSS
-- **Vite** - Build tool and development server
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js (v16 or higher)
-- Chrome/Chromium browser
+- **React** - UI framework
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Styling framework
+- **shadcn/ui** - Component library
+- **Vite** - Build tool
 
 ### Installation
 
-1. **Install Backend Dependencies:**
-```powershell
+1. **Clone the Repository:**
+```bash
+git clone https://github.com/yourusername/QuickCom.git
+cd QuickCom
+```
+
+2. **Install Backend Dependencies:**
+```bash
 cd backend
 npm install
 ```
 
-2. **Install Frontend Dependencies:**
-```powershell
+3. **Install Frontend Dependencies:**
+```bash
 cd frontend
 npm install
 ```
@@ -68,34 +88,33 @@ npm install
 ### Running the Application
 
 1. **Start the Backend Server:**
-```powershell
+```bash
 cd backend
 npm start
 ```
 The backend will run on `http://localhost:5000`
 
 2. **Start the Frontend Development Server:**
-```powershell
+```bash
 cd frontend
 npm run dev
 ```
 The frontend will run on `http://localhost:5173`
 
 3. **Access the Dashboard:**
-Open your browser and go to `http://localhost:5173`
+Open your browser and navigate to `http://localhost:5173`
 
-## 📞 Support
+## � How It Works
 
-For issues with:
-- **Website Structure Changes**: Update selectors in backend
+1. **Set your location** by entering it in the location field and clicking "Set"
+2. **Enter a search term** for the product you want to find
+3. **Click "Search"** and wait for results to populate from all platforms
+4. **Compare prices, delivery times, and availability** across different services
 
-## 🎉 Success!
+## 📝 License
 
-When everything is working correctly, you should see:
-- ✅ Backend running on port 5000
-- ✅ Frontend accessible at localhost:5173
-- ✅ Beautiful dashboard interface
-- ✅ Successful product scraping
-- ✅ JSON files generated with results
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-Happy scraping! 🚀
+---
+
+Happy shopping and happy scraping! 🚀
