@@ -7,7 +7,7 @@ async function setInstamartLocation(page, loc) {
       console.log("Navigating to Instamart...");
       await page.goto("https://www.swiggy.com/instamart", {
         waitUntil: "domcontentloaded",
-        timeout: 30000
+        timeout: 300000
       });
     }
     

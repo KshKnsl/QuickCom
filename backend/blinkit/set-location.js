@@ -4,7 +4,7 @@ async function setBlinkitLocation(page, loc) {
     if (!page.url().includes("blinkit.com")) {
       await page.goto("https://blinkit.com/", {
         waitUntil: "domcontentloaded",
-        timeout: 30000,
+        timeout: 300000,
       });
     }
     try {
