@@ -3,34 +3,24 @@
 import { useState, useEffect, useRef } from "react"
 import { SearchForm } from "@/components/SearchForm"
 import { ProductList } from "@/components/ProductList"
-import { Cart } from "@/components/Cart"
 import { LoadingIndicator } from "@/components/loading-indicator"
-import { ShoppingCart, Package2, AlertCircle, MapPin } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { Package2, AlertCircle, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Toaster, toast } from "react-hot-toast"
 
-// Dynamically set WebSocket URL based on current host in production
 const getWebsocketUrl = () => {
   const isProduction = import.meta.env.PROD;
-  // Use environment variable if available
   if (import.meta.env.VITE_WS_URL) {
     return import.meta.env.VITE_WS_URL;
   }
   
-  // In production with no env var, derive from current window location
   if (isProduction && typeof window !== "undefined") {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${window.location.host}`;
   }
-  
-  // Default fallback for development
   return "ws://localhost:5000";
 }
-
 const WS_URL = getWebsocketUrl();
-
-// Make sure this type definition matches exactly with the one in ProductList.tsx
 type Service = "blinkit" | "zepto" | "instamart"
 
 interface Product {
@@ -44,25 +34,10 @@ interface Product {
   discount: string | null
   imageUrl: string
   available: boolean
-  source?: Service  // Changed from string to Service
+  source?: Service 
 }
 
-interface CartItem {
-  name: string
-  price: string
-  quantity: string
-  source?: Service  // Changed from string to Service
-}
-
-interface CartData {
-  items: CartItem[]
-  total: string
-}
-
-// Define service types
 type ServiceStatus = "pending" | "loading" | "success" | "error" | "empty"
-
-// Define service-specific state
 interface ServiceState {
   status: ServiceStatus
   message: string
@@ -81,7 +56,6 @@ export default function Home() {
   const [currentLocation, setCurrentLocation] = useState<string | null>(null)
   const [loadingMessage, setLoadingMessage] = useState("")
   
-  // Service-specific states
   const [services, setServices] = useState<Record<Service, ServiceState>>({
     blinkit: {
       status: "pending",
@@ -108,11 +82,7 @@ export default function Home() {
       color: "orange"
     }
   })
-  
-  const [activeService, setActiveService] = useState<Service | null>(null)
-  const [cartData, setCartData] = useState<CartData>({ items: [], total: "₹0" })
-  const [showCart, setShowCart] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
+    const [activeService, setActiveService] = useState<Service | null>(null)
   const [error, setError] = useState("")
 
   const ws = useRef<WebSocket | null>(null)
@@ -358,47 +328,6 @@ export default function Home() {
                 }
                 break
 
-              case "addToCart":
-                setCartCount((prev) => prev + 1)
-                toast.success(data.message || `Product added to ${data.service || ""} cart!`, {
-                  icon: "🛒✅",
-                   style: {
-                        background: '#16a34a',
-                        color: 'white',
-                      }
-                })
-                break
-
-              case "removeFromCart": 
-                setCartCount((prev) => Math.max(0, prev - 1))
-                toast.success(data.message || "Product removed.", {
-                  icon: "🛒➖",
-                  style: {
-                        background: '#f97316',
-                        color: 'white',
-                      }
-                })
-                break
-
-              case "viewCart":
-                if (data.cart) {
-                  setCartData(data.cart)
-                  setShowCart(true)
-                  setCartCount(data.cart.items?.length || 0)
-                  toast.success(data.message || "Cart loaded.")
-                } else {
-                  toast("Cart data missing in successful response.", {
-                    icon: '⚠️',
-                    style: {
-                      background: '#FEF3C7',
-                      color: '#92400E'
-                    }
-                  })
-                }
-                setIsLoading(false)
-                setLoadingMessage("")
-                break
-
               default:
                 console.warn("Received unhandled successful action:", data.action, data)
                 break
@@ -474,7 +403,6 @@ export default function Home() {
       
       setIsLoadingSearch(true)
       setLoadingMessage(`Searching for ${searchTerm} across all services...`)
-      setShowCart(false)
 
       ws.current.send(
         JSON.stringify({
@@ -487,46 +415,6 @@ export default function Home() {
       toast.error("Failed to send search request.")
       setIsLoadingSearch(false)
     }
-  }
-
-  const handleAddToCart = (productId: string, service: Service) => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      setError("Connection lost. Please refresh the page.")
-      toast.error("Connection lost")
-      return
-    }
-
-    ws.current.send(
-      JSON.stringify({
-        action: "addToCart",
-        productId,
-        service
-      }),
-    )
-  }
-
-  const handleRemoveFromCart = (productId: string) => {
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      setError("Connection lost. Please refresh the page.")
-      toast.error("Connection lost")
-      return
-    }
-
-    ws.current.send(
-      JSON.stringify({
-        action: "removeFromCart",
-        productIdToRemove: productId,
-      }),
-    )
-    
-    setIsLoading(true)
-    setLoadingMessage("Loading cart...")
-
-    ws.current.send(
-      JSON.stringify({
-        action: "viewCart",
-      }),
-    )
   }
 
   return (
@@ -545,20 +433,6 @@ export default function Home() {
                 <span className="text-xs font-medium">{currentLocation}</span>
               </div>
             )}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="relative hover:bg-orange-400 focus:bg-orange-400"
-              onClick={() => setShowCart(true)}
-              aria-label="View Cart"
-            >
-              <ShoppingCart className="h-6 w-6" />
-              {cartCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 bg-yellow-400 text-slate-900 px-1.5 py-0.5 text-xs font-bold">
-                  {cartCount}
-                </Badge>
-              )}
-            </Button>
           </div>
         </div>
       </header>
@@ -651,8 +525,6 @@ export default function Home() {
           </div>
         )}
       </main>
-      
-      {showCart && <Cart cartData={cartData} onClose={() => setShowCart(false)} onRemoveFromCart={handleRemoveFromCart} />}
 
       <footer className="bg-slate-800 text-white text-center p-4 mt-auto">
         <p>&copy; {new Date().getFullYear()} QuickCom Scraper Tool. For educational purposes only.</p>

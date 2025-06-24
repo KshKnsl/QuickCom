@@ -1,10 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardFooter, CardHeader } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingCart, Check, ImageOff, Search, Tag, Clock } from "lucide-react"
+import { ImageOff, Search, Tag, Clock } from "lucide-react"
 
 type Service = "blinkit" | "zepto" | "instamart"
 
@@ -24,7 +22,6 @@ interface Product {
 
 interface ProductListProps {
   products: Product[]
-  onAddToCart: (productId: string) => void
   isCompact?: boolean
   serviceName?: Service
   isLoading?: boolean
@@ -32,41 +29,25 @@ interface ProductListProps {
 
 export function ProductList({ 
   products, 
-  onAddToCart, 
   isCompact = false,
   serviceName,
   isLoading = false
 }: ProductListProps) {
-  const [addedItems, setAddedItems] = useState<Record<string, boolean>>({})
-
-  const handleAddToCart = (productId: string) => {
-    onAddToCart(productId)
-    setAddedItems((prev) => ({ ...prev, [productId]: true }))
-    setTimeout(() => {
-      setAddedItems((prev) => ({ ...prev, [productId]: false }))
-    }, 1500)
-  }
-
-  // Define colors based on service
   const serviceColors = {
     blinkit: {
       badge: "bg-green-600",
-      button: "bg-green-500 hover:bg-green-600",
       price: "text-green-600"
     },
     zepto: {
       badge: "bg-purple-600",
-      button: "bg-purple-500 hover:bg-purple-600",
       price: "text-purple-600"
     },
     instamart: {
       badge: "bg-orange-600",
-      button: "bg-orange-500 hover:bg-orange-600", 
       price: "text-orange-600"
     }
   }
 
-  // Get the correct color scheme
   const getServiceColor = (product: Product) => {
     const service = product.source || serviceName || "blinkit"
     return serviceColors[service as Service] || serviceColors.blinkit
@@ -95,7 +76,6 @@ export function ProductList({
     )
   }
 
-  // Determine the grid columns based on compact mode
   const gridClass = isCompact
     ? "grid grid-cols-1 sm:grid-cols-2 gap-3"
     : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
@@ -120,7 +100,7 @@ export function ProductList({
               Out of Stock
             </Badge>
           )}
-          <CardHeader className="p-3 pb-0">
+          <CardHeader className="p-3">
             <div className="relative">
               {product.imageUrl ? (
                 <>
@@ -128,7 +108,8 @@ export function ProductList({
                     src={product.imageUrl} 
                     alt={product.name} 
                     className={`w-full ${isCompact ? 'h-24' : 'h-32 sm:h-40'} object-contain mb-2 sm:mb-3 group-hover:opacity-80 transition-opacity duration-300`} 
-                  />                  <img 
+                  />                  
+                  <img 
                     src={serviceColors[(product.source || serviceName || 'blinkit') as Service] 
                       ? `/src/assets/${product.source || serviceName || 'blinkit'}.png` 
                       : '/src/assets/blinkit.png'}
@@ -170,32 +151,6 @@ export function ProductList({
               )}
             </div>
           </CardHeader>
-          
-          <CardFooter className={`p-3 pt-2 mt-auto ${isCompact ? 'pb-3' : ''}`}>
-            <Button
-              onClick={() => product.available ? handleAddToCart(product.id) : null}
-              disabled={!product.available || addedItems[product.id]}
-              className={`w-full py-1.5 rounded-md text-sm font-medium text-white transition-all duration-200 ${
-                addedItems[product.id]
-                  ? "bg-green-600 hover:bg-green-700"
-                  : product.available
-                  ? serviceColor.button
-                  : "bg-slate-300 cursor-not-allowed"
-              }`}
-            >
-              {addedItems[product.id] ? (
-                <>
-                  <Check className="h-4 w-4 mr-1" aria-hidden="true" /> Added
-                </>
-              ) : product.available ? (
-                <>
-                  <ShoppingCart className="h-4 w-4 mr-1" aria-hidden="true" /> Add
-                </>
-              ) : (
-                "Out of Stock"
-              )}
-            </Button>
-          </CardFooter>
         </Card>
       )})}
     </div>

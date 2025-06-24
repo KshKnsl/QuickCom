@@ -15,13 +15,12 @@ export default defineConfig({
     },
   },
   build: {
-    assetsDir: 'assets', // Keep assets in a consistent folder
-    outDir: 'dist', // The output directory
-    emptyOutDir: true, // Clean the output directory before building
-    sourcemap: false, // Disable source maps in production to reduce size
+    assetsDir: 'assets',
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
-        // Ensure consistent and predictable asset filenames
         assetFileNames: (assetInfo) => {
           const extType = assetInfo.name?.split('.').at(1);
           if (extType && /png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
