@@ -172,17 +172,22 @@ wss.on("connection", (ws) => {
             ];
 
             const [blinkitBrowser, zeptoBrowser, instamartBrowser] =
-              await Promise.all(launchPromises);
-
-            // Set up the browser instances
+              await Promise.all(launchPromises);            // Set up the browser instances
             browsers.blinkit = blinkitBrowser;
             browsers.zepto = zeptoBrowser;
             browsers.instamart = instamartBrowser;
 
-            // Create a page for each browser
-            pages.blinkit = await browsers.blinkit.newPage();
-            pages.zepto = await browsers.zepto.newPage();
-            pages.instamart = await browsers.instamart.newPage();
+            // Get all currently opened pages in each browser
+            const [blinkitPages, zeptoPages, instamartPages] = await Promise.all([
+              browsers.blinkit.pages(),
+              browsers.zepto.pages(),
+              browsers.instamart.pages()
+            ]);
+
+            // Use the first existing page if available, or create a new one if needed
+            pages.blinkit = blinkitPages.length > 0 ? blinkitPages[0] : await browsers.blinkit.newPage();
+            pages.zepto = zeptoPages.length > 0 ? zeptoPages[0] : await browsers.zepto.newPage();
+            pages.instamart = instamartPages.length > 0 ? instamartPages[0] : await browsers.instamart.newPage();
 
             // Store browser and page references
             activeBrowsers.set(clientId, browsers);
@@ -238,7 +243,7 @@ wss.on("connection", (ws) => {
             break;
           }
 
-          const { location } = data;
+          const { location, services } = data;
           if (!location) {
             ws.send(
               JSON.stringify({
@@ -252,19 +257,42 @@ wss.on("connection", (ws) => {
             break;
           }
 
+          // If specific services are provided, only set location for those services
+          // Otherwise, set for all services
+          const servicesToUpdate = services && Array.isArray(services) && services.length > 0 
+            ? services.filter(s => ["blinkit", "zepto", "instamart"].includes(s))
+            : ["blinkit", "zepto", "instamart"];
+          
+          if (servicesToUpdate.length === 0) {
+            ws.send(
+              JSON.stringify({
+                action: "statusUpdate",
+                step: "setLocation",
+                status: "error",
+                success: false,
+                message: "No valid services specified for location update.",
+              })
+            );
+            break;
+          }
+
           ws.send(
             JSON.stringify({
               action: "statusUpdate",
               step: "setLocation",
               status: "loading",
-              message: `Setting location to ${location} on all services...`,
+              message: servicesToUpdate.length === 3 
+                ? `Setting location to ${location} on all services...`
+                : `Setting location to ${location} on ${servicesToUpdate.join(", ")}...`,
             })
           );
 
           try {
-            // Set location for all services in parallel
-            const setLocationPromises = [
-              (async () => {
+            // Only create promises for services that need to be updated
+            const setLocationPromises = [];
+            
+            if (servicesToUpdate.includes("blinkit")) {
+              setLocationPromises.push((async () => {
                 try {
                   const locationTitle = await setBlinkitLocation(
                     clientPages.blinkit,
@@ -283,9 +311,11 @@ wss.on("connection", (ws) => {
                     error: error.message,
                   };
                 }
-              })(),
+              })());
+            }
 
-              (async () => {
+            if (servicesToUpdate.includes("zepto")) {
+              setLocationPromises.push((async () => {
                 try {
                   const locationTitle = await setZeptoLocation(
                     clientPages.zepto,
@@ -304,9 +334,11 @@ wss.on("connection", (ws) => {
                     error: error.message,
                   };
                 }
-              })(),
+              })());
+            }
 
-              (async () => {
+            if (servicesToUpdate.includes("instamart")) {
+              setLocationPromises.push((async () => {
                 try {
                   const locationTitle = await setInstamartLocation(
                     clientPages.instamart,
@@ -325,21 +357,29 @@ wss.on("connection", (ws) => {
                     error: error.message,
                   };
                 }
-              })(),
-            ];
+              })());
+            }
 
             const results = await Promise.all(setLocationPromises);
 
-            // Update the location set status for all services
-            const locationStatus = locationSet.get(clientId);
+            // Update the location set status for services that were processed
+            const locationStatus = locationSet.get(clientId) || {
+              blinkit: false,
+              zepto: false,
+              instamart: false
+            };
+            
             let anySuccess = false;
             let locationTitles = {};
+            let failedServices = [];
 
             results.forEach((result) => {
               locationStatus[result.service] = result.success;
               if (result.success) {
                 anySuccess = true;
                 locationTitles[result.service] = result.title;
+              } else {
+                failedServices.push(result.service);
               }
             });
 
@@ -352,8 +392,11 @@ wss.on("connection", (ws) => {
                   step: "setLocation",
                   status: "completed",
                   success: true,
-                  locationResults: results, // Send detailed results for all services
-                  message: `Location set on one or more services`,
+                  locationResults: results,
+                  failedServices: failedServices, // Include the list of failed services for retry
+                  message: failedServices.length > 0 
+                    ? `Location set successful for some services. Failed for: ${failedServices.join(', ')}`
+                    : `Location set successful for all requested services`,
                 })
               );
             } else {
@@ -364,7 +407,8 @@ wss.on("connection", (ws) => {
                   status: "error",
                   success: false,
                   locationResults: results,
-                  message: "Failed to set location on any service.",
+                  failedServices: failedServices, // Include the list of failed services for retry
+                  message: `Failed to set location on any service: ${failedServices.join(', ')}. Please try again.`,
                 })
               );
             }
@@ -380,6 +424,57 @@ wss.on("connection", (ws) => {
               })
             );
           }
+          break;
+          
+        case "retrySetLocation":
+          const retryPages = activePages.get(clientId);
+          if (!retryPages) {
+            ws.send(
+              JSON.stringify({
+                action: "statusUpdate",
+                step: "retrySetLocation",
+                status: "error",
+                success: false,
+                message: "Browsers not initialized. Please initialize first.",
+              })
+            );
+            break;
+          }
+          
+          const { retryLocation, retryServices } = data;
+          if (!retryLocation) {
+            ws.send(
+              JSON.stringify({
+                action: "statusUpdate",
+                step: "retrySetLocation",
+                status: "error",
+                success: false,
+                message: "No location provided for retry.",
+              })
+            );
+            break;
+          }
+          
+          // Only retry the specified services
+          if (!retryServices || !Array.isArray(retryServices) || retryServices.length === 0) {
+            ws.send(
+              JSON.stringify({
+                action: "statusUpdate",
+                step: "retrySetLocation",
+                status: "error",
+                success: false,
+                message: "No services specified for retry.",
+              })
+            );
+            break;
+          }
+          
+          // Forward to the setLocation handler with specific services
+          ws.send(JSON.stringify({
+            action: "setLocation", 
+            location: retryLocation, 
+            services: retryServices
+          }));
           break;
 
         case "search":
@@ -509,8 +604,7 @@ wss.on("connection", (ws) => {
               `Searching on ${service}...`
             );
 
-            try {
-              // Promise to capture product JSON from network responses
+            try {              // Promise to capture product JSON from network responses
               let productJsonResponse = null;
               let responseHandler;
 
@@ -551,11 +645,8 @@ wss.on("connection", (ws) => {
                 setTimeout(() => {
                   if (page && typeof page.off === "function")
                     page.off("response", responseHandler);
-                  reject(
-                    new Error(
-                      `Timeout waiting for ${service} product JSON response after 30s`
-                    )
-                  );
+                  // Instead of rejecting with error, resolve with a marker to use HTML extraction
+                  resolve({ useHtmlExtraction: true, page: page });
                 }, 30000);
               });
 
@@ -589,15 +680,32 @@ wss.on("connection", (ws) => {
               );
               const contentLoaded = await ensureContentLoaded(page);
 
-              // Extract product information from captured network JSON
+              // Extract product information - first try from JSON, fallback to HTML if needed
               updateSearchStatus(
                 service,
                 "extracting",
                 `Extracting ${service} products...`
               );
               try {
+                // Get either JSON response or marker for HTML extraction
                 productJsonResponse = await productJsonPromise;
-                const products = extractProductInformation(productJsonResponse);
+                
+                // If it's a fallback marker, attach the page for HTML extraction
+                if (productJsonResponse && productJsonResponse.useHtmlExtraction) {
+                  console.log(`Using HTML extraction for ${service}`);
+                  updateSearchStatus(
+                    service,
+                    "extracting",
+                    `Extracting ${service} products from HTML...`
+                  );
+                }
+                
+                // Pass the response with page object to the extraction function
+                if (productJsonResponse.useHtmlExtraction) {
+                  productJsonResponse.page = page;
+                }
+                
+                const products = await extractProductInformation(productJsonResponse);
 
                 if (products && products.length > 0) {
                   updateSearchStatus(
@@ -618,15 +726,51 @@ wss.on("connection", (ws) => {
                 }
               } catch (error) {
                 console.error(
-                  `Error capturing or processing ${service} product JSON:`,
+                  `Error during product extraction for ${service}:`,
                   error
                 );
-                updateSearchStatus(
-                  service,
-                  "error",
-                  `Failed to get product data: ${error.message}`
-                );
-                return [];
+                
+                // Final fallback - try direct HTML extraction if everything else failed
+                try {
+                  console.log(`Attempting direct HTML extraction for ${service} as final fallback`);
+                  updateSearchStatus(
+                    service,
+                    "extracting",
+                    `Final attempt to extract ${service} products...`
+                  );
+                  
+                  // Create a simplified wrapper to pass the page
+                  const htmlProducts = await extractProductInformation({ 
+                    useHtmlExtraction: true, 
+                    page: page 
+                  });
+                  
+                  if (htmlProducts && htmlProducts.length > 0) {
+                    updateSearchStatus(
+                      service,
+                      "success",
+                      `Found ${htmlProducts.length} products on ${service} via direct HTML extraction.`,
+                      htmlProducts
+                    );
+                    return htmlProducts;
+                  } else {
+                    updateSearchStatus(
+                      service,
+                      "empty",
+                      `No products found on ${service}.`,
+                      []
+                    );
+                    return [];
+                  }
+                } catch (fallbackError) {
+                  console.error(`Final extraction attempt failed for ${service}:`, fallbackError);
+                  updateSearchStatus(
+                    service,
+                    "error",
+                    `Failed to get product data: ${error.message}`
+                  );
+                  return [];
+                }
               }
             } catch (error) {
               console.error(`Error in ${service} search:`, error);

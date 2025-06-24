@@ -3,8 +3,10 @@ async function navigateToSearch(page, searchTerm) {
   
   try {
     const encodedSearchTerm = encodeURIComponent(searchTerm);
-    console.log(`Going to: https://www.swiggy.com/search?query=${encodedSearchTerm}`);
-    const response = await page.goto(`https://www.swiggy.com/search?query=${encodedSearchTerm}`, {
+    
+    // Using the direct Instamart search URL as provided
+    console.log(`Going to: https://www.swiggy.com/instamart/search?custom_back=true&query=${encodedSearchTerm}`);
+    const response = await page.goto(`https://www.swiggy.com/instamart/search?custom_back=true&query=${encodedSearchTerm}`, {
       waitUntil: 'networkidle2', 
       timeout: 50000
     });
@@ -12,18 +14,30 @@ async function navigateToSearch(page, searchTerm) {
     const url = await page.url();
     console.log(`Current page URL: ${url}`);
     
-    // Check if we need to click the Instamart tab
-    try {
-      const instamartTabSelector = 'button[data-testid="instamart-tab"], a[href*="instamart"]';
-      const hasInstamartTab = await page.$(instamartTabSelector);
-      
-      if (hasInstamartTab) {
-        await page.click(instamartTabSelector);
-        console.log('Clicked Instamart tab');
-        await new Promise(resolve => setTimeout(resolve, 2000));
+    // If we ended up on a general search page instead of Instamart-specific search
+    if (!url.includes('instamart/search')) {
+      try {
+        const instamartTabSelector = 'button[data-testid="instamart-tab"], a[href*="instamart"]';
+        const hasInstamartTab = await page.$(instamartTabSelector);
+        
+        if (hasInstamartTab) {
+          await page.click(instamartTabSelector);
+          console.log('Clicked Instamart tab');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (error) {
+        console.log(`Error clicking Instamart tab: ${error.message}`);
       }
-    } catch (error) {
-      console.log(`Error clicking Instamart tab: ${error.message}`);
+    }
+    
+    // Make sure we've actually landed on an Instamart page
+    const currentUrl = await page.url();
+    if (!currentUrl.includes('instamart')) {
+      console.log(`Not on Instamart page, trying direct navigation`);
+      await page.goto(`https://www.swiggy.com/instamart/search?custom_back=true&query=${encodedSearchTerm}`, {
+        waitUntil: 'networkidle2',
+        timeout: 30000
+      });
     }
     
     return true;
@@ -35,23 +49,64 @@ async function navigateToSearch(page, searchTerm) {
 
 async function ensureContentLoaded(page) {
   try {
+    console.log("Ensuring Instamart content is loaded...");
+    
     try {
+      // Check for loading indicators and wait for them to disappear
       const loadingSelector = '.loading, .shimmer, .skeleton, [class*="loading"], [class*="Loader"]';
       const hasLoadingIndicator = await page.$(loadingSelector);
       
       if (hasLoadingIndicator) {
-        await page.waitForSelector(loadingSelector, { hidden: true, timeout: 10000 });
+        console.log("Found loading indicators, waiting for them to disappear");
+        await page.waitForSelector(loadingSelector, { hidden: true, timeout: 10000 })
+          .catch(e => console.log(`Loading indicators still present after timeout: ${e.message}`));
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Alternative: wait for product grid to appear
-      await page.waitForSelector('.product-item, .product-card, [data-testid="item-card"]', { timeout: 8000 })
-        .catch(e => console.log('No product cards found, continuing anyway'));
+      // Wait for product containers based on the HTML structure provided
+      console.log("Waiting for product cards to appear");
+      const productSelector = '[data-testid="default_container_ux4"], .XjYJe._2_few, ._179Mx';
+      await page.waitForSelector(productSelector, { 
+        timeout: 10000,
+        visible: true
+      }).catch(e => console.log(`Product cards not found within timeout: ${e.message}`));
       
-      return true;
+      // Check if we successfully loaded product cards
+      const productCardCount = await page.evaluate(() => {
+        return document.querySelectorAll('[data-testid="default_container_ux4"], .XjYJe._2_few').length;
+      });
+      
+      console.log(`Found ${productCardCount} product cards on the page`);
+      
+      if (productCardCount > 0) {
+        // Give the page a moment to fully render all product details
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        return true;
+      }
+      
+      // Check for no results message
+      const noResultsFound = await page.evaluate(() => {
+        const pageText = document.body.innerText;
+        return pageText.includes("No results found") || 
+               pageText.includes("No matching products") || 
+               pageText.includes("Try another search");
+      });
+      
+      if (noResultsFound) {
+        console.log("No results found message detected on page");
+        return false;
+      }
+      
+      return false;
     } catch (error) {
       console.log(`Timeout waiting for content to load: ${error.message}`);
-      return false;
+      
+      // Even if we time out, check if there are any product cards
+      const anyProductCards = await page.evaluate(() => {
+        return document.querySelectorAll('[data-testid="default_container_ux4"], .XjYJe._2_few').length > 0;
+      });
+      
+      return anyProductCards;
     }
   } catch (error) {
     console.log(`Error ensuring content loaded: ${error.message}`);

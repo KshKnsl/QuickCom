@@ -158,13 +158,12 @@ export function ProductList({
               <p className="text-xs sm:text-sm text-gray-600 mb-1">
                 {product.quantity}
               </p>
-
-              {product.deliveryTime && (
+                {product.deliveryTime && (
                 <div className="flex items-center text-xs text-green-700 mb-1.5">
                   <Clock className="h-3 w-3 mr-1" />
-                  <span>{product.deliveryTime}</span>
+                  <span>{product.deliveryTime === "earliest" ? "10min" : product.deliveryTime}</span>
                 </div>
-              )}
+                )}
 
               <div className="mt-auto">
                 <div className="flex items-baseline gap-2">

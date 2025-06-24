@@ -1,69 +1,54 @@
-async function setZeptoLocation(page, location) {
-  console.log(`Setting Zepto location to: ${location}`);
+async function setZeptoLocation(page, loc) {
+  console.log(`Setting Zepto location to: ${loc}`);
   try {
-    // Go to the Zepto website
     if (!page.url().includes("zeptonow.com")) {
       await page.goto("https://www.zeptonow.com/");
     }
 
-    // Handle initial location setup or change location
     try {
-      // Click on "Select Location" button
       await page.waitForSelector('.max-w-\\[170px\\] > span', { timeout: 5000 });
       await page.click('.max-w-\\[170px\\] > span');
       console.log("Clicked location button");
       
-      // Wait for the search address input field and click on it
       await page.waitForSelector('[placeholder="Search a new address"]', { timeout: 5000 });
       await page.click('[placeholder="Search a new address"]');
       
-      // Type the location in search input
       await page.waitForSelector('[placeholder="Search a new address"]:not([disabled])', { timeout: 5000 });
-      await page.type('[placeholder="Search a new address"]', location);
-      console.log(`Typed location: ${location}`);
+      await page.type('[placeholder="Search a new address"]', loc);
+      console.log(`Typed location: ${loc}`);
       
-      // Wait for the location suggestion to appear and click on it
       await page.waitForSelector('.flex:nth-child(1) > .ml-4 > div > .font-heading', { timeout: 5000 });
       await page.click('.flex:nth-child(1) > .ml-4 > div > .font-heading');
       console.log("Selected location from suggestions");
       
-      // Wait for confirm button and click "Confirm & Continue" 
       await page.waitForSelector('.bg-skin-primary > .flex', { timeout: 5000 });
       await page.click('.bg-skin-primary > .flex');
       console.log("Clicked confirm and continue");
-      
-      // Wait for page to update with the new location
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    } catch (error) {
-      console.error(`Error during Zepto location selection: ${error.message}`);
-      // Try alternative approach if available
+      await new Promise(r => setTimeout(r, 2000));
+    } catch (err) {
+      console.error(`Error during Zepto location selection: ${err.message}`);
     }
     
-    // Verify location was set
-    const locationTitle = await isLocationSet(page);
-    if (locationTitle) {
-      console.log(`Zepto location successfully set to: ${locationTitle}`);
-      return locationTitle;
+    const locTitle = await isLocSet(page);
+    if (locTitle) {
+      console.log(`Zepto location successfully set to: ${locTitle}`);
+      return locTitle;
     } else {
-      console.log(`Failed to verify Zepto location after setting to: ${location}`);
+      console.log(`Failed to verify Zepto location after setting to: ${loc}`);
       return null;
     }
-  } catch (error) {
-    console.error("Error setting Zepto location:", error);
+  } catch (err) {
+    console.error("Error setting Zepto location:", err);
     return null;
   }
 }
 
-async function isLocationSet(page) {
+async function isLocSet(page) {
   console.log("Checking if Zepto location is set...");
   
   try {
-    // Check for the location display in the header
-    // Based on the current Zepto website structure
-    const locationSelectors = [
-      // Current main selector for the location display
+    const selectors = [
       '.max-w-\\[170px\\] > span',
-      // Alternative selectors if the UI changes
       '[data-testid="location-btn"]',
       '[class*="location-display"]',
       '[class*="address-display"]',
@@ -71,43 +56,38 @@ async function isLocationSet(page) {
       '.delivery-location'
     ];
 
-    // Try each selector to find the location display element
-    for (const selector of locationSelectors) {
+    for (const sel of selectors) {
       try {
-        const exists = await page.$(selector);
-        if (!exists) continue;
+        const el = await page.$(sel);
+        if (!el) continue;
         
-        const titleText = await page.$eval(selector, (el) => el.textContent.trim());
-        if (titleText && titleText.length > 2 && !titleText.toLowerCase().includes("select") && !titleText.toLowerCase().includes("enter")) {
-          console.log(`Zepto location found: "${titleText}"`);
-          return titleText;
+        const txt = await page.$eval(sel, el => el.textContent.trim());
+        if (txt && txt.length > 2 && !txt.toLowerCase().includes("select") && !txt.toLowerCase().includes("enter")) {
+          console.log(`Zepto location found: "${txt}"`);
+          return txt;
         }
-      } catch (selectorError) {
-        // Try next selector
+      } catch (e) {
       }
     }
     
-    // Check if we're on the main page (success indicator)
-    const isOnMainPage = await page.evaluate(() => {
+    const isMain = await page.evaluate(() => {
       return window.location.pathname === '/' || 
              document.querySelector('.product-grid, [class*="product-list"], [class*="category-list"]') !== null;
     });
     
-    if (isOnMainPage) {
+    if (isMain) {
       console.log("On Zepto main page, assuming location is set");
       return "Location Set";
     }
     
     return null;
-  } catch (error) {
-    console.error("Error checking if Zepto location is set:", error);
+  } catch (err) {
+    console.error("Error checking if Zepto location is set:", err);
     return null;
   }
 }
 
-
-
 module.exports = {
   setZeptoLocation,
-  isLocationSet
+  isLocSet
 };
