@@ -36,8 +36,10 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
     libpng-dev \
-    xvfb \
-    x11-utils\
+    x11vnc \
+    fluxbox \
+    xterm \
+    x11-utils \
     libx11-6 \
     libx11-xcb1 \
     libxcb1 \
@@ -62,6 +64,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get install -y google-chrome-stable \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Verify Chrome installation
 RUN google-chrome-stable --version
@@ -91,10 +94,11 @@ ENV DEBUG="puppeteer:*"
 
 # Expose the port the app runs on
 EXPOSE 10000
+EXPOSE 5900
 
-# Create a startup script to run Xvfb and then start the server
-RUN echo '#!/bin/bash\nXvfb :99 -screen 0 1280x1024x24 &\nexport DISPLAY=:99\nexec node server.js' > /app/start.sh && \
+# Create a startup script to run VNC, Fluxbox, and then start the server
+RUN echo '#!/bin/bash\n\n# Start Fluxbox window manager\nfluxbox &\n\n# Start x11vnc server\nx11vnc -display :0 -forever -nopw -listen 0.0.0.0 -rfbport 5900 &\n\n# Wait for X to be ready\nsleep 2\n\n# Start the Node.js server\nexec node server.js' > /app/start.sh && \
     chmod +x /app/start.sh
 
-# Start the server with virtual display
+# Start the server with VNC and Fluxbox
 CMD ["/app/start.sh"]
