@@ -104,13 +104,6 @@ The frontend will run on `http://localhost:5173`
 3. **Access the Dashboard:**
 Open your browser and navigate to `http://localhost:5173`
 
-## � How It Works
-
-1. **Set your location** by entering it in the location field and clicking "Set"
-2. **Enter a search term** for the product you want to find
-3. **Click "Search"** and wait for results to populate from all platforms
-4. **Compare prices, delivery times, and availability** across different services
-
 ## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
